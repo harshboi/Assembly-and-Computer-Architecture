@@ -10,22 +10,25 @@ INCLUDE Irvine32.inc
 
 .data
 
-program_name		BYTE	"			Program to calculate Fibonacci numbers",0
-title				BYTE	"Student",0
+program_name		BYTE	"Welcome to the Integer Accumulator by Harshvardhan Singh",0
 my_name				BYTE	"Programmed by Harshvardhan Singh",0
 question			BYTE	"What's your name? "
 user_name			BYTE	21 DUP(?)
-sentence1			BYTE	"Enter the number of Fibonacci terms to be displayed ",0
-sentence2			BYTE	"Give the number as na integer in the range [1 .. 46]. ",0
-sentence3			BYTE	"How many terms do you want? ",0
-error				BYTE	"Out of range. Enter a number in [1 .. 46] ",0
-Final_message		BYTE	"Results certified by Leonardo Pisano.",0
-previous			DWORD	?
-current				DWORD	?
-input				DWORD	?
+array				SDWORD   30 DUP(?)
+sentence1			BYTE	"Please enter nubers in [-100,-1] ",0
+sentence2			BYTE	"Enter a non-negative number when you are finished to see results",0
+sentence3			BYTE	"Enter a number: ",0
+num_entered			BYTE	"You entered ",0
+num_entered2		BYTE	" valid numbers",0
+sum_sentence		BYTE    "The sum of your valid numbers is ",0
+sum					SDWORD  ?
+average_sentence    BYTE	"The rounded average is ",0
+average				SDWORD	?
+final_mssg			BYTE	"Thank you for playing Integer Accumulator! Its been a pleasure to meet you, ",0
 counter				DWORD	?
 spaces				BYTE	"     ",0
 bye					BYTE	"Live Long and Prosper ",0
+error1				BYTE	"Number smaller than -100 entered, enter another number ",0
 
 
 ; (insert variable definitions here)
@@ -49,72 +52,71 @@ main PROC
 	call crlf
 	mov edx, OFFSET sentence2
 	CALL WriteString
-	CALL readInt                        ; Takes in input
-	cmp eax,46
-	jg _incorrect
-	mov input,eax
-	back:
-		mov ecx,input
-		mov counter,0
-		mov previous,1			;Holds the previous value
-		mov eax,0				;Holds the final value
+	mov esi,OFFSET array
+	call crlf
+	mov ebx,0
+    
+	take_input:
+	  mov edx, OFFSET sentence3
+	  CALL WriteString
+	  CALL ReadInt
+	  cmp eax,0
+	  jge is_positive
+	  cmp eax,-100
+	  jl is_negative
+	  mov [esi],eax
+	  add esi,4
+	  inc ebx
+	  loop take_input
+	 
+	 is_positive:
+	   mov counter,ebx				; Holds the number of elements in an array
+	   mov edx, OFFSET num_entered
+	   mov edx, OFFSET num_entered
+	   CALL WriteString
+	   mov eax, counter
+	   Call WriteInt
+	   mov edx, OFFSET num_entered2
+	   Call WriteString
+	   mov eax,0
+       mov ecx,counter
+       mov esi, OFFSET array
+	   jmp _sum
 
-	L1:
-		mov ebx,eax			; holds the previous value to be added in the next step
-		add eax,previous	; eax has the new value
-		mov previous,ebx	; holds the previous value
-		mov current,eax		; holds the new value
-		CALL WriteDec
-		call _spaces
-		_placeholder:
-			inc counter
-		mov edx, 0
-		mov eax,counter		; Preparing for division
-		mov ebx,5
-		div ebx
-		cmp edx,0
-		je _newLine
-		iL1:
-			mov eax,current
-			mov ebx,previous
-		loop L1
-		CALL crlf
-		jmp _end
-
-	_newLine:
-		CALL crlf
-		jmp iL1
-
-	_spaces:
-		mov edx, OFFSET spaces
-		CALL WriteString
-		jmp _placeholder
-
-	_incorrect:
-		mov edx, OFFSET error
-		CALL WriteString
+	  is_negative:
+	    mov edx,OFFSET error1
+		Call WriteString
 		call crlf
-		mov edx,OFFSET sentence2
-		CALL WriteString
-		mov edx, OFFSET sentence3
-		call crlf
-		CALL WriteString
-		call ReadInt
-		cmp eax,46
-		jg _incorrect
-		mov input,eax
-		jmp back
+		jmp take_input
 
+	  _sum:
+		 add eax, [esi]
+		 add esi,4
+		 loop _sum
 
-														;PG 202 ReadString for taking in input
-	_end:
-		mov edx, OFFSET Final_message
-		CALL WriteString
-		CALL crlf
-		mov edx, OFFSET bye
-		CALL WriteString
+	  CALL crlf
+	  mov edx, OFFSET sum_sentence          ;Next 3 lines for print the summed integers
+	  Call WriteString
+	  mov sum,eax
+	  Call WriteInt
+	  call CRLF
+
+	  mov esi, OFFSET array
+
+	  _average:
+	    mov ebx,counter
+		mov edx,0
+		cdq
+		idiv ebx
+		mov average,eax
+		mov edx,offset average_sentence
+		Call WriteString
+		Call WriteInt
+		call CRLF
+		mov edx,offset final_mssg
+		Call WriteString
 		mov edx, OFFSET user_name
-		CALL WriteString
+		Call WriteString
 
 	exit	; exit to operating system
 main ENDP
