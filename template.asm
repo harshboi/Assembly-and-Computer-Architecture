@@ -25,6 +25,7 @@ ExitProcess proto,dwExitCode:dword
 	jack		DWORD		?
 	spaces		BYTE		"   ",0
 	lines		DWORD		?
+	farewell_m  BYTE		"Results certified by Harsh and Euclid.   Goodbye.",0
 .code
 main proc
 	; write your code here
@@ -32,6 +33,7 @@ main proc
 	CALL introduction
 	CALL GetUserData
 	CALL ShowComposites
+	CALL farewell
 
 	invoke ExitProcess,0
 main ENDP
@@ -110,7 +112,7 @@ ShowComposites PROC
 		CALL WriteString
 		jmp place_holder
 
-	iscomposite:
+	iscomposite:				; Primary co-procedure for checking wether a number is prime or composite
 		mov ebx,2
 		
 		mov jack,eax
@@ -122,7 +124,7 @@ ShowComposites PROC
 		
 	jmp place_holder
 	
-	has_factors:
+	has_factors:			; Checks if the number has any factors
 		mov edx,0
 		push eax			;PUSH OPERATION PERFORMED
 		div ebx
@@ -135,22 +137,36 @@ ShowComposites PROC
 		jmp has_factors
 
 	done:
-		cmp lines,10
+		cmp lines,10				; checks if line space is needed
 		jne _ignorelinespace
 		mov lines,0
 		CALL CRLF
-		_ignorelinespace:
+		_ignorelinespace:			; Function for ignoring the linespace
 			pop eax
 			Call WriteDec
-		mov edx,OFFSET spaces
+		mov edx,OFFSET spaces		
 		CALL WriteString
 		;add print statement
-		add lines,1
+		add lines,1					; Increments the number of character entered on a line by 1
 		jmp p_holder1
 		
 	place_holder:
 		ret
 
 ShowComposites ENDP
+
+
+;---------------------------------------------------------------------------------------------------------
+;Farewell
+;Displays the farewell message
+;---------------------------------------------------------------------------------------------------------
+
+farewell PROC
+	CALL CRLF		; For spaces after teh composite number printout
+	CALL CRLF
+	mov edx,OFFSET farewell_m
+	CALL WriteString
+	ret
+farewell ENDP
 
 end main
