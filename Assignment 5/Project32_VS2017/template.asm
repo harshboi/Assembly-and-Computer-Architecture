@@ -34,11 +34,10 @@ ExitProcess proto,dwExitCode:dword
 
 	num_gen		DWORD		?
 	array		DWORD		_max DUP(?)
-	
 
-
-	te			DWORD		10
-	temp		DWORD		sizeof min
+	j			DWORD		?
+	temp		DWORD		?
+	temp1		DWORD		?
 
 	mybytes BYTE 12h,34h,56h,78h
 	b WORD 1234h
@@ -48,17 +47,27 @@ main proc
 	; write your code here
 	
 	CALL Randomize
+
 	CALL introduction
 	
 	push OFFSET num_gen
 	CALL getdata
 	
     push OFFSET array						;0		36
+	
 	PUSH num_gen							;4		32
 	PUSH lo									;8		28
 	PUSH hi									;12		24		16
 	CALL fillarray							;16		20
+	
+	push temp1
+	push temp
+	push j
+	push num_gen							;4 as array is still on the stack0
+    CALL _SORT
 
+    push num_gen
+	CALL sorted
 	invoke ExitProcess,0
 main ENDP
 
@@ -68,8 +77,9 @@ main ENDP
 ;---------------------------------------------------------------------------------------------------------
 
 introduction PROC
-    pushfd							; Pushes all the flags
-    mov edx, OFFSET _title
+    push edx							; Pushes all the flags
+	push ebp
+	mov edx, OFFSET _title
 	CALL WriteString
 	CALL CRLF
 	CALL CRLF
@@ -77,8 +87,9 @@ introduction PROC
 	CALL WriteString
 	CALL CRLF
 	CALL CRLF
-	popfd							; Pops all the flags
-	ret
+	pop ebp
+	pop edx
+	ret 
 
 introduction ENDP
 
@@ -167,7 +178,7 @@ fillarray PROC
 	pop edx
 	pop ecx
 	pop eax
-	ret 12						; Will not pop the last element from the array
+	ret 12						; Will not pop the array
 
 fillarray ENDP
 
@@ -176,11 +187,144 @@ fillarray ENDP
 ; Will sort the array
 ;---------------------------------------------------------------------------------------------------------
 
-sort PROC
-	mov ecx,13
+_SORT PROC
+	push eax
+	push ebx
+	push ecx
+	push edx
+	push ebp
 	
+	mov ecx,10
 
-	ret
-SORT ENDP
+	mov ebp,esp  						; Store a copy of the stack pointer in EBP (Base Pointer) so that we don;t lose ESP
+	mov edi,[ebp+40]
+	mov ecx,[ebp+24]					; Stores the number of elements in the array
+
+	mov eax,0
+	mov ebx,0
+	l4:
+		mov eax,[edi+4*ebx]
+		inc ebx
+		CALL WriteInt
+		CALL CRLF
+		loop l4
+	
+	mov ecx,[ebp+24]					; Stores the number of elements in the array
+	mov eax,0							; eax = k
+	dec ecx								; k < request-1
+	
+	selection_sort:
+		mov esi,eax						; i = k
+	    mov ebx,[edi+(4*esi)]			; ebx = array[i]`				; i = k
+		
+		inc eax
+		mov [ebp+28],eax				; j = k+1
+		dec eax
+
+		L1:											; Inner for loop
+            
+			mov [ebp+32],eax						; storing eax in temp
+			mov eax,[ebp+28]						; Storing j in eax, value of k lost for the moment
+			mov edx,[edi+4*eax]						; edx = array[j], j = i+1
+			mov eax,[ebp+32]						; Bringin k from temp to eax
+
+			cmp edx,ebx								; array[j]>array[i]
+			jg greater
+			jmp next_iter
+						
+
+		next_iter:
+			mov [ebp+32],eax						; Storing k in temp
+			mov eax,[ebp+28]						; Storing j in eax
+			inc eax									; j++
+			cmp eax,[ebp+24]						; if(j<num_array)
+			je end_inner_loop
+			mov [ebp+28],eax						; transfer incremented j
+			mov eax,[ebp+32]						; Restore k to eax
+			jmp L1
+		
+		swap:
+			mov [ebp+32],eax						; Saving k in temp
+			mov edx,eax
+			mov eax,[edi+4*eax]						; eax = array[k]
+			mov [ebp+36],eax						; Store eax (array[k]) in temp1
+			mov	[edi+(4*edx)],ebx					; array[k] = array[i]
+			mov ebx,[ebp+36]						; ebx = array[k] stored in temp1
+			mov [edi+(4*esi)],ebx
+			mov eax,edx
+			jmp place_holder
+		
+		greater:
+			mov esi,[ebp+28]						; i = j
+			mov ebx,[edi+(4*esi)]					; ebx = array[i]`				; i = k
+
+			jmp next_iter							; checks for the next inner or outer iteration
+			
+		end_inner_loop:
+			mov eax,[ebp+32]						; Restore k to eax
+			cmp eax, esi
+			jne swap
+			place_holder:
+				inc eax
+				loop selection_sort
+
+		;greater:
+		;	mov esi,[ebp+28]						; i = j
+		;	mov ebx,[edi+(4*esi)]					; ebx = array[i]`				; i = k
+;
+;			jmp next_iter							; checks for the next inner or outer iteration
+			
+;		next_outer_loop:
+;			inc eax
+;			loop selection_sort
+		
+	pop ebp	
+	pop edx
+	pop ecx	
+	pop ebx	
+	pop eax	
+
+	ret 16
+_SORT ENDP
+
+;---------------------------------------------------------------------------------------------------------
+; Sorted
+; Prints the sorted array
+;---------------------------------------------------------------------------------------------------------
+
+SORTED PROC
+
+mov ebp,esp
+mov ecx,[ebp+4]
+mov edi,[ebp+8]
+mov eax,0
+mov ebx,0
+
+L1:
+	CALL CRLF
+	mov eax,[edi+4*ebx]
+    CALL WriteInt
+	CALL CRLF
+	add ebx,4
+	loop L1
+
+ret 8
+
+
+SORTED ENDP
 
 end main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
