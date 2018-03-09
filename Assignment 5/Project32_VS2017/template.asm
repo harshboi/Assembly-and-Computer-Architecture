@@ -26,7 +26,7 @@ ExitProcess proto,dwExitCode:dword
 	output1		BYTE		"The median is ",0
 	output2		BYTE		"The sorted list is:",0
 	error		BYTE		"Out of range. Try again.",0 
-
+	spaces		BYTE		"   ",0
 	min			DWORD		_min
 	max			DWORD		_max
 	lo			DWORD		_lo
@@ -294,21 +294,41 @@ _SORT ENDP
 
 SORTED PROC
 
+mov edx, OFFSET output2
+CALL WriteString
+mov edx,0
+CALL CRLF
 mov ebp,esp
 mov ecx,[ebp+4]
 mov edi,[ebp+8]
 mov eax,0
-mov ebx,0
+	mov ebx,0
+	mov edx,0
+	mov esi,0
 
-L1:
-	CALL CRLF
-	mov eax,[edi+4*ebx]
-    CALL WriteInt
-	CALL CRLF
-	add ebx,4
-	loop L1
+	L1:
+		mov eax,[edi+4*ebx]
+		cmp edx,10
+		jge _placeholder
+		_back:
+			CALL WriteDec
+			mov esi,edx
+			mov edx, OFFSET spaces
+			CALL WriteString
+			mov edx,esi
+			mov esi,0
+		inc edx
+		add ebx,1
+		loop L1
+		JMP EXITt
 
-ret 8
+		_placeholder:
+			CALL CRLF
+			mov edx,0
+			jmp _back
+		exitt:
+ 			ret 8
+
 
 
 SORTED ENDP
