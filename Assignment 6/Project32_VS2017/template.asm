@@ -22,7 +22,7 @@ getString MACRO tem						;input is the offset of the array
 	mov edx, tem
 	mov ecx,20								; 10 digit number is the biggest that can be fit into the ecx register
 	CALL ReadString
-	Call WriteString
+	;Call WriteString
 ENDM
 
 .data
@@ -46,7 +46,9 @@ ENDM
 ; an actual number which will be smaller than a byte
 	num_array	DWORD		10 DUP(?)
 	temp		BYTE		21 DUP(0)	
-	num			BYTE		 4 DUP(0)	
+	num			BYTE		 4 DUP(0)
+	sum			DWORD		?
+	tem			DWORD		?
 	iterator	DWORD		?
 
 	mybytes BYTE 12h,34h,56h,78h
@@ -58,19 +60,23 @@ main proc
 	
 	CALL introduction
 	
-	mov ecx,12
-	mov edx, OFFSET str_array
-	CALL ReadString
-	mov edx, OFFSET str_array
-	add edx,10
-	mov eax,[edx]
-	cmp eax,127
-	je quitt
+	;mov ecx,12
+	;mov edx, OFFSET str_array
+	;CALL ReadString
+	;mov edx, OFFSET str_array
+	;add edx,10
+	;mov eax,[edx]
+	;cmp eax,127
+	;je quitt
 
 	mov iterator,0
-	push iterator
-	quitt:	
-push OFFSET str_array
+	push iterator					;44
+	;quitt:
+	push tem						;40
+	mov sum,0	
+	push sum						;36
+	push OFFSET num_array			;32
+	push OFFSET str_array			;28
 	CALL readVal
 	
 
@@ -124,47 +130,96 @@ introduction ENDP
 ; 
 ;---------------------------------------------------------------------------------------------------------
 
-readVal PROC
+readVal PROC		;24
 	
-	push eax
-	push ebx
-	push ecx
-	push edx
-	push ebp
-	push edi
+	push eax		;20
+	push ebx		;16
+	push ecx		;12
+	push edx		;8
+	push ebp		;4
+	push edi		;0
 
 	mov ebp,esp
-	
+	; add multiple input loop/recurssion
 	get_user_input:
-		mov ecx,10
-		mov edi,[ebp+28]
-		mov edx, OFFSET instruction1
-		CALL WriteString						;testing REMOVE
-		getString edi
+		mov edi,[ebp+28]				;Stores the offset of the array
+		getstring edi
+		mov esi,edi						; Storing the offset of the array in esi
+		cld
+
+		mov ecx,12
+		mov ebx,0		
+		
+		loop1:
+			inc ebx
+
+			lodsb						; mov esi to eax  Use lodsb instead of lodsd as lodsd (lods doubleword) takes a doubleword in, instead of a byte (lods byte (lodsb))
+			
+			cmp ebx,11					; checks wether the number will fit into the ECX register
+			je exceed_size_check
+			all_good:
+			cmp eax,00
+			je string_finish			; when the NULL character is inserted
+			cmp eax,48					; eax = str[k]
+			jl wrong_num
+			cmp eax,57
+			jg wrong_num
+			
+			; Adds the sum for characters
+			complete_number:			; will be primarily changed for -ve number approach
+				
+				pushad
+
+				mov ebx, eax			; is the value of k
+				mov eax, [ebp+36]		; is the added sum (starts from 0)
+				mov edx,10
+				mul edx					; x = 10 * x, x = sum
+				sub ebx,48				; k - 48, where k = str[k]
+				add eax,ebx				; x = 10 * x + (k-48)
+				mov [ebp+36],eax		; Storing sum back in memory
+				
+				popad
+			
+			
+			loop loop1
+
+	; Call recurvsively from this function and have a jump on the next line towards the end of the array
 	
-	mov ebx,0			;
-	mov eax,0			; x = 0
-	mov ecx,12 
+	store_num_array:
+		mov eax,[ebp+36]
+		mov edx,[ebp+44]
+		mov edi,[ebp+32]
+		mov [edi+edx],eax
+		;dont forget to reset sum to 0
 
-	size_check:
-		mov edx,[edi+10]
-		cmp edx,127
-		jne quit
+	string_finish:
+		mov edi,[ebp+36]
+		cmp edi,4294967295
+		jle store_num_array
+		mov edx,OFFSET error
+		CALL WriteString
+		CALL CRLF
+		mov eax,0
+		mov [ebp+36],eax						; Resets sum (sum = 0)
+	
+	exceed_size_check:							; checks the physical size i.e. more then 10 digits
+		;mov esi, [edi+10]						; not possible as str_array is a byte array and esi holds 4 bytes (Complete Register)\
+		;lodsb									; not needed a performed at the beginning of the function
+		cmp eax,00
+		je all_good
+		mov edx,OFFSET error
+		CALL WriteString
+		CALL CRLF
+		jmp get_user_input
 
-	str_to_int:
-		
-		
-		mov eax,[ebp+32]
-		mov edx,[edi+eax]
-		cmp edx,48
-		jl quit
-		cmp edx,57
-		jg quit
-		
-		; inset algorithm for converting to integer
-
-
-	quit:
+	wrong_num:
+		; add exception for -ve numbers
+        mov edx,OFFSET error
+		CALL WriteString
+		CALL CRLF
+		mov eax,0
+		mov [ebp+36],eax
+		jmp get_user_input
 	    
 
 		jmp get_user_input
