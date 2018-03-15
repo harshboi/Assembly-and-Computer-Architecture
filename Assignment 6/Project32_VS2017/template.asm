@@ -39,19 +39,21 @@ ENDM
 	output3		BYTE		"The sum of these numbers is: ",0
 	output4		BYTE		"The average is: ",0
 	gbyemssg	BYTE		"Thanks for playing!",0
+	extra_credit BYTE		"Done as per extra credit",0
     
 	num_gen		DWORD		?
     str_array   BYTE		12 DUP(?)			; 12 choosen so as to check if the number exceed the max for a 32 bit register; 10 digit number is the biggest that can be put into the ECX register
 ; Max +ve number that can be stored in ecx is 2^32-1 (FFFFFFFFh). Reason for str_array being 12 is that a number taken as an ASCII string will take a byte in memory, This byte will be converted to
 ; an actual number which will be smaller than a byte
-	num_array	DWORD		10 DUP(?)
+	num_array	REAL4		10 DUP(?)
 	temp		BYTE		21 DUP(0)	
 	num			BYTE		 4 DUP(0)
-	sum			DWORD		?
-	tem			DWORD		?
-	iterator	DWORD		?
-	average		DWORD		?
-
+	sum			SDWORD		?
+	tem			SDWORD		?
+	iterator	SDWORD		?
+	average		SDWORD		?
+	is_negative DWORD		?
+	
 	mybytes BYTE 12h,34h,56h,78h
 	b WORD 1234h
 
@@ -69,8 +71,9 @@ main proc
 	;mov eax,[edx]
 	;cmp eax,127
 	;je quitt
-
+	
 	mov iterator,1
+	push is_negative				;48
 	push iterator					;44
 	;quitt:
 	push tem						;40
@@ -79,8 +82,8 @@ main proc
 	push OFFSET num_array			;32
 	push OFFSET str_array			;28
 	CALL readVal
-	mov edi,num_array
-	Call WriteString
+	mov eax,[num_array+8]
+	Call WriteInt
 
 	invoke ExitProcess,0
 main ENDP
@@ -144,6 +147,8 @@ readVal PROC		;24
 	; add multiple input loop/recurssion
 	get_user_input:
 		mov edi,[ebp+28]				;Stores the offset of the array
+		mov edx,OFFSET instruction1
+		Call WriteString
 		getstring edi
 		mov esi,edi						; Storing the offset of the array in esi
 		cld
@@ -181,7 +186,7 @@ readVal PROC		;24
 				
 				popad
 			
-			
+				num_is_neg:
 			loop loop1
 
 	; Call recurvsively from this function and have a jump on the next line towards the end of the array
@@ -202,15 +207,23 @@ readVal PROC		;24
 		; for recursive approach, look at exercise for week 9. Basically push everything pushed in main again
 
 	string_finish:
-		mov edi,[ebp+36]
-		cmp edi,4294967294
-		jbe store_num_array						; Don't use JLE as 4294967294 is evaluated as a -ve number
-		mov edx,OFFSET error
-		CALL WriteString
-		CALL CRLF
-		mov eax,0
-		mov [ebp+36],eax						; Resets sum (sum = 0)
-		jmp get_user_input
+		mov eax,[ebp+48]
+		cmp eax,1
+		jne is_pos
+			mov eax,[ebp+36]
+			not eax									; Will perform the 1s complement
+			inc eax									; Performs the 2s complement
+			mov [ebp+36],eax
+		is_pos:
+			mov edi,[ebp+36]
+			cmp edi,2147483647
+			jle store_num_array						; Don't use JLE as 4294967294 is evaluated as a -ve number
+			mov edx,OFFSET error
+			CALL WriteString
+			CALL CRLF
+			mov eax,0
+			mov [ebp+36],eax						; Resets sum (sum = 0)
+			jmp get_user_input
 	
 	exceed_size_check:							; checks the physical size i.e. more then 10 digits
 		;mov esi, [edi+10]						; not possible as str_array is a byte array and esi holds 4 bytes (Complete Register)\
@@ -224,6 +237,15 @@ readVal PROC		;24
 
 	wrong_num:
 		; add exception for -ve numbers
+		dec ebx									; Check for a negative number
+		cmp ebx,0
+		jne place_holder
+			cmp eax,45							; 45 is ASCII in dec for "-" character
+			jne  place_holder
+			mov edi,1
+			mov [ebp+48],edi
+			jmp num_is_neg	
+		place_holder:
         mov edx,OFFSET error
 		CALL WriteString
 		CALL CRLF
@@ -240,12 +262,17 @@ readVal PROC		;24
 		mov edi,[ebp+44]
 		cmp edi,10
 		je input_finished
-		inc iterator
-		push iterator
-		push tem
-		push sum
-		push OFFSET num_array
-		push OFFSET str_array
+		mov eax,[ebp+44]								; inc iterator will not work as iterator is not pushed onto the stack
+        inc eax
+		mov [ebp+44],eax
+		mov eax,0
+		mov [ebp+48],eax							; setting is_negative to 0
+		push [ebp+48]
+		push [ebp+44]
+		push [ebp+40]
+		push [ebp+36]
+		push [ebp+32]								; is the offset num_array
+		push [ebp+28]								; is the offset str_array
 		CALL readVal
 		input_finished:
 			pop edi
@@ -254,7 +281,7 @@ readVal PROC		;24
 			pop ecx
 			pop ebx
 			pop eax
-		ret 20
+		ret 24
 		
 	
 	
