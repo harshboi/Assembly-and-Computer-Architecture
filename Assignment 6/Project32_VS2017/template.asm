@@ -6,7 +6,7 @@ TITLE Program Template     (template.asm)
 ; OSU ID: 9717726420
 
 INCLUDE Irvine32.inc
-
+; divide by 10 and remainder is the character value
 ;.386
 ;.model flat,stdcall
 ;.stack 4096
@@ -50,6 +50,7 @@ ENDM
 	sum			DWORD		?
 	tem			DWORD		?
 	iterator	DWORD		?
+	average		DWORD		?
 
 	mybytes BYTE 12h,34h,56h,78h
 	b WORD 1234h
@@ -69,7 +70,7 @@ main proc
 	;cmp eax,127
 	;je quitt
 
-	mov iterator,0
+	mov iterator,1
 	push iterator					;44
 	;quitt:
 	push tem						;40
@@ -78,8 +79,8 @@ main proc
 	push OFFSET num_array			;32
 	push OFFSET str_array			;28
 	CALL readVal
-	
-
+	mov edi,num_array
+	Call WriteString
 
 	invoke ExitProcess,0
 main ENDP
@@ -186,21 +187,30 @@ readVal PROC		;24
 	; Call recurvsively from this function and have a jump on the next line towards the end of the array
 	
 	store_num_array:
-		mov eax,[ebp+36]
-		mov edx,[ebp+44]
-		mov edi,[ebp+32]
+		mov eax,[ebp+44]				; mov iterator into edx
+		dec eax
+		mov edx,4
+		mul edx
+		mov edx,eax
+		mov eax,[ebp+36]				; move sum into eax
+		mov edi,[ebp+32]				; move num_array into edi
 		mov [edi+edx],eax
+		mov eax,0
+		mov [ebp+36],eax
+		jmp recurse
 		;dont forget to reset sum to 0
+		; for recursive approach, look at exercise for week 9. Basically push everything pushed in main again
 
 	string_finish:
 		mov edi,[ebp+36]
-		cmp edi,4294967295
-		jle store_num_array
+		cmp edi,4294967294
+		jbe store_num_array						; Don't use JLE as 4294967294 is evaluated as a -ve number
 		mov edx,OFFSET error
 		CALL WriteString
 		CALL CRLF
 		mov eax,0
 		mov [ebp+36],eax						; Resets sum (sum = 0)
+		jmp get_user_input
 	
 	exceed_size_check:							; checks the physical size i.e. more then 10 digits
 		;mov esi, [edi+10]						; not possible as str_array is a byte array and esi holds 4 bytes (Complete Register)\
@@ -224,14 +234,30 @@ readVal PROC		;24
 
 		jmp get_user_input
 		;iterator++	
-	
-	pop edi
-	pop ebp
-	pop edx
-	pop ecx
-	pop ebx
-	pop eax
 
+	recurse:
+		; ADD OUTPUT FOR AS DONE BY EXTRA CREDIT
+		mov edi,[ebp+44]
+		cmp edi,10
+		je input_finished
+		inc iterator
+		push iterator
+		push tem
+		push sum
+		push OFFSET num_array
+		push OFFSET str_array
+		CALL readVal
+		input_finished:
+			pop edi
+			pop ebp
+			pop edx
+			pop ecx
+			pop ebx
+			pop eax
+		ret 20
+		
+	
+	
 	ret
 
 readVal ENDP
