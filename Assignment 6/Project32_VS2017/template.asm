@@ -17,6 +17,11 @@ ExitProcess proto,dwExitCode:dword
 ;
 ;---------------------------------------------------------------------------------------------------------
 
+displayString MACRO tem
+
+ENDM
+
+
 getString MACRO tem						;input is the offset of the array
 	
 	mov edx, tem
@@ -53,6 +58,7 @@ ENDM
 	iterator	SDWORD		?
 	average		SDWORD		?
 	is_negative DWORD		?
+	print_array	BYTE		12 DUP(?)
 	
 	mybytes BYTE 12h,34h,56h,78h
 	b WORD 1234h
@@ -61,6 +67,18 @@ ENDM
 main proc
 	; write your code here
 	
+
+	mov eax,-12345
+	mov esi,OFFSET num_array
+	mov ecx,[esi]
+		test eax,eax
+		jl check
+	push edx
+	push eax
+	check:
+		push ecx
+
+
 	CALL introduction
 	
 	;mov ecx,12
@@ -84,6 +102,19 @@ main proc
 	CALL readVal
 	mov eax,[num_array+8]
 	Call WriteInt
+	
+	mov sum,0
+	mov tem,0
+	mov iterator,1
+	mov is_negative,0
+	push is_negative				;48
+	push iterator					;44
+	push sum						;48
+	push tem						;44
+	push OFFSET num_array			;40
+	push OFFSET print_array			;36
+	
+
 
 	invoke ExitProcess,0
 main ENDP
@@ -192,12 +223,15 @@ readVal PROC		;24
 	; Call recurvsively from this function and have a jump on the next line towards the end of the array
 	
 	store_num_array:
+		CLD								; Clears the direction flag for stosd
 		mov eax,[ebp+44]				; mov iterator into edx
 		dec eax
 		mov edx,4
 		mul edx
 		mov edx,eax
 		mov eax,[ebp+36]				; move sum into eax
+		mov edi,[ebp+32]				; move num_array into edi
+		STOSD							; store eax into edi
 		mov edi,[ebp+32]				; move num_array into edi
 		mov [edi+edx],eax
 		mov eax,0
@@ -262,7 +296,7 @@ readVal PROC		;24
 		mov edi,[ebp+44]
 		cmp edi,10
 		je input_finished
-		mov eax,[ebp+44]								; inc iterator will not work as iterator is not pushed onto the stack
+		mov eax,[ebp+44]							; inc iterator will not work as iterator is not pushed onto the stack
         inc eax
 		mov [ebp+44],eax
 		mov eax,0
@@ -282,12 +316,74 @@ readVal PROC		;24
 			pop ebx
 			pop eax
 		ret 24
-		
-	
-	
-	ret
-
+	;ret		
 readVal ENDP
 
+;---------------------------------------------------------------------------------------------------------
+;
+;
+;---------------------------------------------------------------------------------------------------------
+
+writeVal PROC
+
+	pushad				;0 - 28
+	
+	mov ebp,esp
+	mov esi,[ebp+40]					; Stores the offset of the numerical array
+	mov edi,[ebp+36]					; Stores the offset of printing array
+	;mov eax,[ebp+44]					; stores tem
+	mov ecx,2
+
+	conversion:
+		mov eax,[esi+[ebp+44]]	; ebp + 4* iterator value
+		jmp _is_neg
+		pos_conversion:
+			mov edx,0
+			mov ebx,10
+			div ebx
+			add edx,48					; Holds the remainder
+			mov ecx,eax					; saving eax, eax holds the quotient (will be used in the next iteration)
+			mov eax,edx
+			stosb
+			mov eax,ecx
+			cmp eax,0
+			jg pos_conversion
+			mov eax,[ebp+44]
+			add eax,4
+			mov [ebp+44],eax
+			jmp done
+	
+	_is_neg:
+		mov ecx,[esi]
+		test ecx, ecx
+		jl neg_conversion				; Will jump if negative
+		jmp pos_conversion				; will jump if positive
+
+	neg_conversion:
+		not eax							; 1's complement
+		inc eax							; 2's complement
+		mov edx,0
+		mov ebx,10
+		div ebx
+		add edx,48
+		mov ecx,eax
+		mov eax,edx
+		STOSB
+		mov eax,ecx
+		cmp eax,0
+		jg neg_conversion
+		mov eax,[ebp+44]
+		add eax,4
+		mov [ebp+44],eax
+		mov eax,54
+		STOSB
+		jmp done		
+
+	done:
+		; Call the macro for printing the number
+		; call conversion for going to the next number
+		;mov 
+
+WriteVal ENDP
 
 end main
