@@ -13,14 +13,14 @@ INCLUDE Irvine32.inc
 ExitProcess proto,dwExitCode:dword
 
 ;---------------------------------------------------------------------------------------------------------
-; getString macro
 ;
 ;---------------------------------------------------------------------------------------------------------
 
-displayString MACRO tem
 
-ENDM
-
+;---------------------------------------------------------------------------------------------------------
+; getString macro
+;
+;---------------------------------------------------------------------------------------------------------
 
 getString MACRO tem						;input is the offset of the array
 	
@@ -28,6 +28,30 @@ getString MACRO tem						;input is the offset of the array
 	mov ecx,20								; 10 digit number is the biggest that can be fit into the ecx register
 	CALL ReadString
 	;Call WriteString
+ENDM
+
+
+displayString MACRO tem
+	LOCAL int_to_str_print
+	
+	push esi
+	push edx
+	mov esi,tem							; Stores the value of edi
+int_to_str_print:
+			std									; sets the direction flag
+			mov eax,0
+			LODSB
+			mov edx,0
+			mov edx,eax
+			CALL WriteChar
+			mov eax,[esi]
+			cmp eax,00h
+			jne int_to_str_print
+			
+
+	pop edx
+	pop esi
+
 ENDM
 
 .data
@@ -50,7 +74,7 @@ ENDM
     str_array   BYTE		12 DUP(?)			; 12 choosen so as to check if the number exceed the max for a 32 bit register; 10 digit number is the biggest that can be put into the ECX register
 ; Max +ve number that can be stored in ecx is 2^32-1 (FFFFFFFFh). Reason for str_array being 12 is that a number taken as an ASCII string will take a byte in memory, This byte will be converted to
 ; an actual number which will be smaller than a byte
-	num_array	REAL4		10 DUP(?)
+	num_array	DWORD		10 DUP(?)
 	temp		BYTE		21 DUP(0)	
 	num			BYTE		 4 DUP(0)
 	sum			SDWORD		?
@@ -90,6 +114,7 @@ main proc
 	;cmp eax,127
 	;je quitt
 	
+
 	mov iterator,1
 	push is_negative				;48
 	push iterator					;44
@@ -100,21 +125,23 @@ main proc
 	push OFFSET num_array			;32
 	push OFFSET str_array			;28
 	CALL readVal
-	mov eax,[num_array+8]
+	mov eax,[num_array+4]
 	Call WriteInt
-	
+	CALL CRLF
+
 	mov sum,0
 	mov tem,0
-	mov iterator,1
+	mov iterator,0
 	mov is_negative,0
-	push is_negative				;48
-	push iterator					;44
+	push is_negative				;56
+	push iterator					;52
 	push sum						;48
 	push tem						;44
 	push OFFSET num_array			;40
 	push OFFSET print_array			;36
 	
-
+    CALL WriteVal
+    pop is_negative
 
 	invoke ExitProcess,0
 main ENDP
@@ -224,18 +251,19 @@ readVal PROC		;24
 	
 	store_num_array:
 		CLD								; Clears the direction flag for stosd
-		mov eax,[ebp+44]				; mov iterator into edx
+		mov eax,[ebp+44]				; mov iterator into eax
 		dec eax
 		mov edx,4
 		mul edx
-		mov edx,eax
+		mov edx,eax						; Stores iteration value
 		mov eax,[ebp+36]				; move sum into eax
 		mov edi,[ebp+32]				; move num_array into edi
+		add edi,edx
 		STOSD							; store eax into edi
-		mov edi,[ebp+32]				; move num_array into edi
-		mov [edi+edx],eax
+		;mov edi,[ebp+32]				; move num_array into edi
+		;mov [edi+edx],eax
 		mov eax,0
-		mov [ebp+36],eax
+		mov [ebp+36],eax				; set sum to 0
 		jmp recurse
 		;dont forget to reset sum to 0
 		; for recursive approach, look at exercise for week 9. Basically push everything pushed in main again
@@ -335,7 +363,14 @@ writeVal PROC
 	mov ecx,2
 
 	conversion:
-		mov eax,[esi+[ebp+44]]	; ebp + 4* iterator value
+		cld
+		mov eax,[edi]
+		mov ebx,[ebp+52]
+		;mov ebx,4		;CHANGE TO DYNAMIC style
+		mov eax,[esi+ebx]
+		mov esi,eax
+		;mov eax,[esi];+[ebp+52]]	; ebp + 4* iterator value, Gets the next numberical value
+		;CALL WriteInt
 		jmp _is_neg
 		pos_conversion:
 			mov edx,0
@@ -344,17 +379,15 @@ writeVal PROC
 			add edx,48					; Holds the remainder
 			mov ecx,eax					; saving eax, eax holds the quotient (will be used in the next iteration)
 			mov eax,edx
-			stosb
+			stosb						; Stores eax into edi
 			mov eax,ecx
 			cmp eax,0
 			jg pos_conversion
-			mov eax,[ebp+44]
-			add eax,4
-			mov [ebp+44],eax
+			
 			jmp done
 	
 	_is_neg:
-		mov ecx,[esi]
+		mov ecx,esi
 		test ecx, ecx
 		jl neg_conversion				; Will jump if negative
 		jmp pos_conversion				; will jump if positive
@@ -372,17 +405,51 @@ writeVal PROC
 		mov eax,ecx
 		cmp eax,0
 		jg neg_conversion
-		mov eax,[ebp+44]
+		mov eax,[ebp+52]
 		add eax,4
-		mov [ebp+44],eax
+		mov [ebp+52],eax
 		mov eax,54
 		STOSB
-		jmp done		
+		jmp done	
 
 	done:
 		; Call the macro for printing the number
 		; call conversion for going to the next number
-		;mov 
+		;mov
+		CALL CRLF
+		MOV esi,edi
+		mov eax,0
+		std
+		lodsb
+		int_to_str_print:
+			std									; sets the direction flag
+			mov eax,0
+			LODSB
+			mov edx,0
+			mov edx,eax
+			CALL WriteChar
+			mov eax,[esi]
+			cmp eax,00h
+			jne int_to_str_print
+		;displayString edi
+
+		mov eax,[ebp+52]			; Loads the iterator
+		add eax, 4					; increments the iterator			
+		mov [ebp+52],eax 
+		cmp eax,40
+		je finished
+
+        push [ebp+52]
+		push [ebp+48]
+		push [ebp+44]
+		PUSH [ebp+40]
+		push [ebp+36]
+
+        CALL WriteVal
+       
+		finished:
+            popad
+			ret 20
 
 WriteVal ENDP
 
