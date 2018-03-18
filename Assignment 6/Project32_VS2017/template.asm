@@ -13,11 +13,6 @@ INCLUDE Irvine32.inc
 ExitProcess proto,dwExitCode:dword
 
 ;---------------------------------------------------------------------------------------------------------
-;
-;---------------------------------------------------------------------------------------------------------
-
-
-;---------------------------------------------------------------------------------------------------------
 ; getString macro
 ;
 ;---------------------------------------------------------------------------------------------------------
@@ -30,27 +25,30 @@ getString MACRO tem						;input is the offset of the array
 	;Call WriteString
 ENDM
 
+;---------------------------------------------------------------------------------------------------------
+;
+;---------------------------------------------------------------------------------------------------------
 
 displayString MACRO tem
 	LOCAL int_to_str_print
 	
-	push esi
-	push edx
-	mov esi,tem							; Stores the value of edi
-int_to_str_print:
-			std									; sets the direction flag
-			mov eax,0
-			LODSB
-			mov edx,0
-			mov edx,eax
-			CALL WriteChar
-			mov eax,[esi]
-			cmp eax,00h
-			jne int_to_str_print
+	;push esi
+	;push edx
+	;mov esi,tem							; Stores the value of edi
+	int_to_str_print:
+		std									; sets the direction flag
+		mov eax,0
+		LODSB
+		mov edx,0
+		mov edx,eax
+		CALL WriteChar
+		mov eax,[esi]
+		cmp eax,00h
+		jne int_to_str_print
 			
 
-	pop edx
-	pop esi
+	;pop edx
+	;pop esi
 
 ENDM
 
@@ -74,7 +72,7 @@ ENDM
     str_array   BYTE		12 DUP(?)			; 12 choosen so as to check if the number exceed the max for a 32 bit register; 10 digit number is the biggest that can be put into the ECX register
 ; Max +ve number that can be stored in ecx is 2^32-1 (FFFFFFFFh). Reason for str_array being 12 is that a number taken as an ASCII string will take a byte in memory, This byte will be converted to
 ; an actual number which will be smaller than a byte
-	num_array	DWORD		10 DUP(?)
+	num_array	REAL4		10 DUP(?)
 	temp		BYTE		21 DUP(0)	
 	num			BYTE		 4 DUP(0)
 	sum			SDWORD		?
@@ -83,7 +81,6 @@ ENDM
 	average		SDWORD		?
 	is_negative DWORD		?
 	print_array	BYTE		12 DUP(?)
-	
 	mybytes BYTE 12h,34h,56h,78h
 	b WORD 1234h
 
@@ -92,15 +89,6 @@ main proc
 	; write your code here
 	
 
-	mov eax,-12345
-	mov esi,OFFSET num_array
-	mov ecx,[esi]
-		test eax,eax
-		jl check
-	push edx
-	push eax
-	check:
-		push ecx
 
 
 	CALL introduction
@@ -113,6 +101,7 @@ main proc
 	;mov eax,[edx]
 	;cmp eax,127
 	;je quitt
+	;push esp
 	
 
 	mov iterator,1
@@ -133,7 +122,8 @@ main proc
 	mov tem,0
 	mov iterator,0
 	mov is_negative,0
-	push is_negative				;56
+	;push is_negative				;56
+	;push esp
 	push iterator					;52
 	push sum						;48
 	push tem						;44
@@ -141,8 +131,20 @@ main proc
 	push OFFSET print_array			;36
 	
     CALL WriteVal
-    pop is_negative
+	cld
+	
+	push OFFSET print_array			;56
+	push OFFSET output3				;52
+	push OFFSET output4				;48
+	mov iterator,0
+	push iterator					;44
+	mov sum,0						
+	push sum						;40
+	push OFFSET num_array			;36
 
+	CALL SUMMATION
+
+	
 	invoke ExitProcess,0
 main ENDP
 
@@ -354,23 +356,19 @@ readVal ENDP
 
 writeVal PROC
 
-	pushad				;0 - 28
-	
+	pushad								;0 - 28 +4 + 4
+	push esp
 	mov ebp,esp
-	mov esi,[ebp+40]					; Stores the offset of the numerical array
-	mov edi,[ebp+36]					; Stores the offset of printing array
+	mov esi,[ebp+44]					; Stores the offset of the numerical array
+	mov edi,[ebp+40]					; Stores the offset of printing array
 	;mov eax,[ebp+44]					; stores tem
 	mov ecx,2
 
 	conversion:
 		cld
-		mov eax,[edi]
-		mov ebx,[ebp+52]
-		;mov ebx,4		;CHANGE TO DYNAMIC style
+		mov ebx,[ebp+56]				; Stores the iterator
 		mov eax,[esi+ebx]
 		mov esi,eax
-		;mov eax,[esi];+[ebp+52]]	; ebp + 4* iterator value, Gets the next numberical value
-		;CALL WriteInt
 		jmp _is_neg
 		pos_conversion:
 			mov edx,0
@@ -395,6 +393,7 @@ writeVal PROC
 	neg_conversion:
 		not eax							; 1's complement
 		inc eax							; 2's complement
+	l_neg_Convert:
 		mov edx,0
 		mov ebx,10
 		div ebx
@@ -404,53 +403,128 @@ writeVal PROC
 		STOSB
 		mov eax,ecx
 		cmp eax,0
-		jg neg_conversion
-		mov eax,[ebp+52]
-		add eax,4
-		mov [ebp+52],eax
-		mov eax,54
-		STOSB
-		jmp done	
+		jg 	l_neg_Convert
+	;mov eax,[ebp+52]
+	;add eax,4
+	;mov [ebp+52],eax
+	mov eax,45
+	STOSB
+	jmp done	
 
 	done:
 		; Call the macro for printing the number
 		; call conversion for going to the next number
 		;mov
-		CALL CRLF
+		;CALL CRLF
 		MOV esi,edi
 		mov eax,0
 		std
 		lodsb
-		int_to_str_print:
-			std									; sets the direction flag
-			mov eax,0
-			LODSB
-			mov edx,0
-			mov edx,eax
-			CALL WriteChar
-			mov eax,[esi]
-			cmp eax,00h
-			jne int_to_str_print
-		;displayString edi
+		;int_to_str_print:
+		;	std									; sets the direction flag
+		;	mov eax,0
+		;;	LODSB
+		;	mov edx,0
+		;	mov edx,eax
+		;	CALL WriteChar
+		;	mov eax,[esi]
+		;	cmp eax,00h
+		;;	jne int_to_str_print
+		displayString edi
 
-		mov eax,[ebp+52]			; Loads the iterator
+		mov eax,[ebp+56]			; Loads the iterator
 		add eax, 4					; increments the iterator			
-		mov [ebp+52],eax 
+		mov [ebp+56],eax 
 		cmp eax,40
 		je finished
 
-        push [ebp+52]
+        push [ebp+56]
+		push [ebp+52]
 		push [ebp+48]
-		push [ebp+44]
-		PUSH [ebp+40]
-		push [ebp+36]
+		PUSH [ebp+44]
+		push [ebp+40]
 
         CALL WriteVal
        
 		finished:
+            pop esp
             popad
 			ret 20
 
 WriteVal ENDP
+
+SUMMATION PROC
+	pushad   ;0-28
+    mov ebp,esp
+	mov esi, [ebp+36]					; store num_array
+	mov ebx, [ebp+44]					; store iterator
+	mov ecx,10							; loop counter
+
+	sum_calc:
+		mov eax,[esi+ebx]				; mov array elements
+		add eax, [ebp+40]				; moves sum
+		add ebx,4
+		mov [ebp+40],eax				; stores sum
+		loop sum_calc
+	mov sum,eax
+	mov edx, [ebp+52]					; Print output statement
+	CALL WriteString
+	
+
+	conversion1:
+		CALL CRLF
+		cld
+		mov edi,[ebp+56]				; Is the string array for printing
+		mov esi,eax
+		jmp _is_neg1
+		pos_conversion1:
+			mov edx,0
+			mov ebx,10
+			div ebx
+			add edx,48					; Holds the remainder
+			mov ecx,eax					; saving eax, eax holds the quotient (will be used in the next iteration)
+			mov eax,edx
+			stosb						; Stores eax into edi
+			mov eax,ecx
+			cmp eax,0
+			jg pos_conversion1
+			
+			jmp done1
+	
+	_is_neg1:
+		mov ecx,esi
+		test ecx, ecx
+		jl neg_conversion1				; Will jump if negative
+		jmp pos_conversion1				; will jump if positive
+
+	neg_conversion1:
+		not eax							; 1's complement
+		inc eax							; 2's complement
+	l_neg_Convert1:
+		mov edx,0
+		mov ebx,10
+		div ebx
+		add edx,48
+		mov ecx,eax
+		mov eax,edx
+		STOSB
+		mov eax,ecx
+		cmp eax,0
+		jg 	l_neg_Convert1
+
+	mov eax,45
+	STOSB
+	jmp done1	
+
+	done1:
+		MOV esi,edi
+		mov eax,0
+		std
+		lodsb
+		displayString edi
+	
+	cld									; clears the direction flag
+	popad
+SUMMATION ENDP
 
 end main
