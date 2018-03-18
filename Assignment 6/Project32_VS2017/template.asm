@@ -59,7 +59,7 @@ ENDM
 	_name		BYTE		"Written by: Harshvardhan Singh",0
 	description BYTE		"Each number needs to be small enough to fit inside a 32 bit register.",0
 	instruction	BYTE		"Please provide 10 unsigned numbers",0
-	instruction1 BYTE		"Please enter an unsigned number: ",0
+	instruction1 BYTE		") Please enter a signed number: ",0
 	output1		BYTE		"After you have finished inputting the raw numbers I will display a list of th eintegers, their sum and their average value",0
 	error		BYTE		"ERROR: you did not enter an unsigned number or your number was too  big. Try again.",0 
 	output2		BYTE		"You entered the following numbers: ",0
@@ -67,6 +67,7 @@ ENDM
 	output4		BYTE		"The average is: ",0
 	gbyemssg	BYTE		"Thanks for playing!",0
 	extra_credit BYTE		"Done as per extra credit",0
+	extra_credit1 BYTE		"Recurssion extra credit implemented",0
     
 	num_gen		DWORD		?
     str_array   BYTE		12 DUP(?)			; 12 choosen so as to check if the number exceed the max for a 32 bit register; 10 digit number is the biggest that can be put into the ECX register
@@ -104,6 +105,9 @@ main proc
 	;push esp
 	
 
+	
+	push instruction1				;56
+	push error						;52
 	mov iterator,1
 	push is_negative				;48
 	push iterator					;44
@@ -129,10 +133,13 @@ main proc
 	push tem						;44
 	push OFFSET num_array			;40
 	push OFFSET print_array			;36
-	
+	CALL CRLF
+	mov edx,OFFSET output2
+	CALL WriteString 
     CALL WriteVal
 	cld
 	
+	push tem						;60
 	push OFFSET print_array			;56
 	push OFFSET output3				;52
 	push OFFSET output4				;48
@@ -142,9 +149,11 @@ main proc
 	push sum						;40
 	push OFFSET num_array			;36
 
+	
 	CALL SUMMATION
 
-	
+	cld								; Clears the direction flag (if not may interfere with exitting the program)
+
 	invoke ExitProcess,0
 main ENDP
 
@@ -152,6 +161,7 @@ main ENDP
 ;---------------------------------------------------------------------------------------------------------
 ; INTRODUCTION
 ; Print general information about the program
+; Called once at the beginning of the program
 ;---------------------------------------------------------------------------------------------------------
 
 introduction PROC
@@ -189,10 +199,12 @@ introduction PROC
 introduction ENDP
 
 
-;---------------------------------------------------------------------------------------------------------
-; Store
-; 
-;---------------------------------------------------------------------------------------------------------
+;---------------------------------------------------------------------------------------------------------------------
+; readVal
+; Used for taking in input as string and then storing it as integers in an array
+; Called after introduction for taking in input from the user
+; variables pushed: num_array, sum, iterator, print_array, tem,is_negative (all registers pushed inside the function)
+;---------------------------------------------------------------------------------------------------------------------
 
 readVal PROC		;24
 	
@@ -283,7 +295,7 @@ readVal PROC		;24
 			cmp edi,2147483647
 			jle store_num_array						; Don't use JLE as 4294967294 is evaluated as a -ve number
 			mov edx,OFFSET error
-			CALL WriteString
+			CALL WriteString						; Outputs error statement
 			CALL CRLF
 			mov eax,0
 			mov [ebp+36],eax						; Resets sum (sum = 0)
@@ -310,7 +322,7 @@ readVal PROC		;24
 			mov [ebp+48],edi
 			jmp num_is_neg	
 		place_holder:
-        mov edx,OFFSET error
+        mov edx,OFFSET error					
 		CALL WriteString
 		CALL CRLF
 		mov eax,0
@@ -331,7 +343,7 @@ readVal PROC		;24
 		mov [ebp+44],eax
 		mov eax,0
 		mov [ebp+48],eax							; setting is_negative to 0
-		push [ebp+48]
+		push [ebp+48]								; Pushing all variables for recurssion to work
 		push [ebp+44]
 		push [ebp+40]
 		push [ebp+36]
@@ -339,20 +351,22 @@ readVal PROC		;24
 		push [ebp+28]								; is the offset str_array
 		CALL readVal
 		input_finished:
-			pop edi
+			pop edi									; Pops the pushed in registers at the beginning of the proedure
 			pop ebp
 			pop edx
 			pop ecx
 			pop ebx
 			pop eax
-		ret 24
+		ret 24										; Pops the 24 variables pushed above (and also in main for the ret back to main)
 	;ret		
 readVal ENDP
 
-;---------------------------------------------------------------------------------------------------------
-;
-;
-;---------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+; writeVal
+; Converts the array of integers (input) to a string and outputs it using the MACRO
+; Called after readVal and displays the numbers taken in as input
+; variables pushed: num_array, sum, iterator, is_negative, print_array, tem, (all registers pushed inside the function)
+;-----------------------------------------------------------------------------------------------------------------------
 
 writeVal PROC
 
@@ -374,7 +388,7 @@ writeVal PROC
 			mov edx,0
 			mov ebx,10
 			div ebx
-			add edx,48					; Holds the remainder
+			add edx,48					; Holds the remainder, also adds the ASCII value for the number in characters
 			mov ecx,eax					; saving eax, eax holds the quotient (will be used in the next iteration)
 			mov eax,edx
 			stosb						; Stores eax into edi
@@ -393,11 +407,11 @@ writeVal PROC
 	neg_conversion:
 		not eax							; 1's complement
 		inc eax							; 2's complement
-	l_neg_Convert:
+	l_neg_Convert:						; Same as pos_conversion due to 2's complement (refer to that label for documentation)
 		mov edx,0
 		mov ebx,10
 		div ebx
-		add edx,48
+		add edx,48						; Converts to ASCII value for the number in character
 		mov ecx,eax
 		mov eax,edx
 		STOSB
@@ -407,7 +421,7 @@ writeVal PROC
 	;mov eax,[ebp+52]
 	;add eax,4
 	;mov [ebp+52],eax
-	mov eax,45
+	mov eax,45							; Adds a -ve sign in ASCII to the end
 	STOSB
 	jmp done	
 
@@ -453,6 +467,13 @@ writeVal PROC
 
 WriteVal ENDP
 
+;---------------------------------------------------------------------------------------------------------------------------
+; Summation
+; Sums up all the numbers and prints it using the displpayString MACRO
+; Called after WriteVal (for output to be in sequence)
+; variables pushed: num_array, sum, iterator, output4, output3, print_array, tem (all registers pushed inside the function)
+;---------------------------------------------------------------------------------------------------------------------------
+
 SUMMATION PROC
 	pushad   ;0-28
     mov ebp,esp
@@ -466,16 +487,18 @@ SUMMATION PROC
 		add ebx,4
 		mov [ebp+40],eax				; stores sum
 		loop sum_calc
+		CALL CRLF
+
 	mov sum,eax
 	mov edx, [ebp+52]					; Print output statement
 	CALL WriteString
 	
 
 	conversion1:
-		CALL CRLF
 		cld
 		mov edi,[ebp+56]				; Is the string array for printing
-		mov esi,eax
+		mov esi,eax						; eax contains the number to be converted to string
+;		CALL WRITEINT
 		jmp _is_neg1
 		pos_conversion1:
 			mov edx,0
@@ -500,11 +523,11 @@ SUMMATION PROC
 	neg_conversion1:
 		not eax							; 1's complement
 		inc eax							; 2's complement
-	l_neg_Convert1:
+	l_neg_Convert1:						; Same as pos_conversion due to the 2's complement
 		mov edx,0
 		mov ebx,10
 		div ebx
-		add edx,48
+		add edx,48						
 		mov ecx,eax
 		mov eax,edx
 		STOSB
@@ -512,7 +535,7 @@ SUMMATION PROC
 		cmp eax,0
 		jg 	l_neg_Convert1
 
-	mov eax,45
+	mov eax,45							; Adds a -ve sign in ASCII to the end
 	STOSB
 	jmp done1	
 
@@ -522,9 +545,27 @@ SUMMATION PROC
 		std
 		lodsb
 		displayString edi
-	
+		mov ebx,1						; Used for checking whether the sum is being calculated or the average
+		cmp ebx,[ebp+60]				; If the average than [ebp+60] = 1 and a jump is used to go to the end
+		je __quit						; else conintues on to the next line to calculate the average
+
+	mov ebx,1
+	mov [ebp+60],ebx					; Adds 1 if summation has been calculated, used for skipping this part when a jump back is used for converting the average to string
+	mov eax,[ebp+40]	
+	mov ebx,10
+    cdq									; Sign extension for handling negative numbers
+	idiv ebx
+	CALL CRLF
+	;CALL WriteInt
+	mov edx, [ebp+48]
+	CALL CRLF
+	CALL WriteString
+	jmp conversion1
+	__quit:
 	cld									; clears the direction flag
 	popad
+
+ret 28
 SUMMATION ENDP
 
 end main
