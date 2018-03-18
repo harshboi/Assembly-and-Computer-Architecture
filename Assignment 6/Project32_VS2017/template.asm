@@ -69,6 +69,7 @@ ENDM
 	extra_credit BYTE		"Done as per extra credit",0
 	extra_credit1 BYTE		"Recurssion extra credit implemented",0
     
+	line_number DWORD		?
 	num_gen		DWORD		?
     str_array   BYTE		12 DUP(?)			; 12 choosen so as to check if the number exceed the max for a 32 bit register; 10 digit number is the biggest that can be put into the ECX register
 ; Max +ve number that can be stored in ecx is 2^32-1 (FFFFFFFFh). Reason for str_array being 12 is that a number taken as an ASCII string will take a byte in memory, This byte will be converted to
@@ -104,10 +105,10 @@ main proc
 	;je quitt
 	;push esp
 	
-
-	
-	push instruction1				;56
-	push error						;52
+	mov line_number,1
+	push OFFSET line_number			;60 (Adress on the stack (esp+60))
+	push OFFSET instruction1				;56
+	push OFFSET error						;52
 	mov iterator,1
 	push is_negative				;48
 	push iterator					;44
@@ -219,7 +220,10 @@ readVal PROC		;24
 	; add multiple input loop/recurssion
 	get_user_input:
 		mov edi,[ebp+28]				;Stores the offset of the array
-		mov edx,OFFSET instruction1
+		mov ebx,[ebp+60]				; Gets the line number EXTRA CREDIT
+		mov eax,[ebx]
+		CALL WriteInt
+		mov edx, [ebp+56]
 		Call WriteString
 		getstring edi
 		mov esi,edi						; Storing the offset of the array in esi
@@ -322,7 +326,7 @@ readVal PROC		;24
 			mov [ebp+48],edi
 			jmp num_is_neg	
 		place_holder:
-        mov edx,OFFSET error					
+        mov edx,[ebp+52]
 		CALL WriteString
 		CALL CRLF
 		mov eax,0
@@ -335,6 +339,7 @@ readVal PROC		;24
 
 	recurse:
 		; ADD OUTPUT FOR AS DONE BY EXTRA CREDIT
+		
 		mov edi,[ebp+44]
 		cmp edi,10
 		je input_finished
@@ -343,13 +348,20 @@ readVal PROC		;24
 		mov [ebp+44],eax
 		mov eax,0
 		mov [ebp+48],eax							; setting is_negative to 0
+		mov ebx,[ebp+60]
+		mov eax,[ebx]
+		inc eax
+		mov [ebx],eax
+		push [ebp+60]
+		push [ebp+56]
+		push [ebp+52]
 		push [ebp+48]								; Pushing all variables for recurssion to work
 		push [ebp+44]
 		push [ebp+40]
 		push [ebp+36]
 		push [ebp+32]								; is the offset num_array
 		push [ebp+28]								; is the offset str_array
-		CALL readVal
+		CALL readVal			; EXTRA CREDIT		EXTRA CREDIT		EXTRA CREDIT	EXTRA CREDIT	EXTRA CREDIT	EXTRA CREDIT
 		input_finished:
 			pop edi									; Pops the pushed in registers at the beginning of the proedure
 			pop ebp
@@ -357,7 +369,7 @@ readVal PROC		;24
 			pop ecx
 			pop ebx
 			pop eax
-		ret 24										; Pops the 24 variables pushed above (and also in main for the ret back to main)
+		ret 36										; Pops the 24 variables pushed above (and also in main for the ret back to main)
 	;ret		
 readVal ENDP
 
